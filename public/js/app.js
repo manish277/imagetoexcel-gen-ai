@@ -135,13 +135,17 @@ async function autoExtract() {
 
     if (data.success) {
       currentData = data;
-      displayResult(data);
-      // Show action buttons after successful extraction
-      const actionButtons = document.getElementById('actionButtons');
-      if (actionButtons) {
-        actionButtons.style.display = 'flex';
-      }
-      showSuccess('Data extracted! You can now download as JSON or Excel.');
+      // Commented out: Preview display - can uncomment if needed later
+      // displayResult(data);
+      
+      // Commented out: Show action buttons - can uncomment if needed later
+      // const actionButtons = document.getElementById('actionButtons');
+      // if (actionButtons) {
+      //   actionButtons.style.display = 'flex';
+      // }
+      
+      // Auto-download Excel directly after extraction completes
+      await downloadExcel();
     } else {
       showError('Error: ' + (data.details || data.error));
     }
@@ -154,6 +158,28 @@ async function autoExtract() {
 }
 
 // extractData function removed - data is displayed automatically after extraction
+
+function clearFileInput() {
+  // Clear the file input
+  const fileInput = document.getElementById('imageInput');
+  if (fileInput) {
+    fileInput.value = '';
+  }
+  
+  // Clear the file name display
+  const fileName = document.getElementById('fileName');
+  if (fileName) {
+    fileName.textContent = '';
+    fileName.classList.remove('show');
+  }
+  
+  // Reset variables
+  currentFile = null;
+  currentData = null;
+  
+  // Hide progress bar
+  stopProgressSequence();
+}
 
 async function downloadExcel() {
   // If we have extracted data, use it to generate Excel without calling LLM again
@@ -186,6 +212,8 @@ async function downloadExcel() {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
         showSuccess('Excel file downloaded successfully!');
+        // Clear the file input after successful download
+        clearFileInput();
       } else {
         const error = await response.json();
         showError('Error: ' + (error.details || error.error));
@@ -250,17 +278,18 @@ function copyToClipboard() {
 }
 
 function clearResult() {
-  hideResult();
-  document.getElementById('extractedData').textContent = '';
+  // Commented out: Hide result preview - can uncomment if needed later
+  // hideResult();
+  // document.getElementById('extractedData').textContent = '';
   currentData = null;
   currentFile = null;
   document.getElementById('imageInput').value = '';
   document.getElementById('fileName').classList.remove('show');
-  // Hide action buttons when cleared
-  const actionButtons = document.getElementById('actionButtons');
-  if (actionButtons) {
-    actionButtons.style.display = 'none';
-  }
+  // Commented out: Hide action buttons - can uncomment if needed later
+  // const actionButtons = document.getElementById('actionButtons');
+  // if (actionButtons) {
+  //   actionButtons.style.display = 'none';
+  // }
   stopProgressSequence();
   clearError();
 }
@@ -345,7 +374,11 @@ function displayResult(data) {
 }
 
 function hideResult() {
-  document.getElementById('result').classList.remove('show');
+  // Result container is commented out, so check if it exists first
+  const resultEl = document.getElementById('result');
+  if (resultEl) {
+    resultEl.classList.remove('show');
+  }
 }
 
 function setLoading(show) {

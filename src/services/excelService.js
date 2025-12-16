@@ -7,22 +7,23 @@ async function markdownToExcel(markdownText, outputPath) {
   // Parse markdown to structured JSON
   const parsedData = markdownToJson(markdownText);
   
+  // Commented out: Raw Text Sheet - can uncomment if needed later
   // Sheet 1: Raw Extracted Text (matches JSON view)
-  const rawTextSheet = workbook.addWorksheet('📄 Raw Text');
-  rawTextSheet.getCell(1, 1).value = 'Raw Extracted Text';
-  rawTextSheet.getCell(1, 1).font = { bold: true, size: 16, color: { argb: 'FF667EEA' } };
-  rawTextSheet.getRow(1).height = 25;
+  // const rawTextSheet = workbook.addWorksheet('📄 Raw Text');
+  // rawTextSheet.getCell(1, 1).value = 'Raw Extracted Text';
+  // rawTextSheet.getCell(1, 1).font = { bold: true, size: 16, color: { argb: 'FF667EEA' } };
+  // rawTextSheet.getRow(1).height = 25;
+  // 
+  // const rawTextLines = markdownText.split('\n');
+  // rawTextLines.forEach((line, index) => {
+  //   const cell = rawTextSheet.getCell(index + 3, 1);
+  //   cell.value = line;
+  //   cell.alignment = { wrapText: true, vertical: 'top' };
+  //   cell.font = { name: 'Courier New', size: 11 };
+  // });
+  // rawTextSheet.columns[0].width = 100;
   
-  const rawTextLines = markdownText.split('\n');
-  rawTextLines.forEach((line, index) => {
-    const cell = rawTextSheet.getCell(index + 3, 1);
-    cell.value = line;
-    cell.alignment = { wrapText: true, vertical: 'top' };
-    cell.font = { name: 'Courier New', size: 11 };
-  });
-  rawTextSheet.columns[0].width = 100;
-  
-  // Sheet 2: Structured Data (matches JSON structured view)
+  // Sheet 1: Structured Data (matches JSON structured view)
   const structuredSheet = workbook.addWorksheet('📊 Structured Data');
   let rowIndex = 1;
   
@@ -403,38 +404,39 @@ async function markdownToExcel(markdownText, outputPath) {
     }
   });
 
+  // Commented out: Summary Sheet - can uncomment if needed later
   // Summary Sheet (matches JSON summary)
-  const summarySheet = workbook.addWorksheet('📋 Summary');
-  summarySheet.getCell(1, 1).value = 'Extraction Summary';
-  summarySheet.getCell(1, 1).font = { bold: true, size: 16, color: { argb: 'FF667EEA' } };
-  summarySheet.getRow(1).height = 30;
-  
-  const summaryData = [
-    { label: 'Total Headers:', value: parsedData.headers.length },
-    { label: 'Total Tables:', value: parsedData.tables.length },
-    { label: 'Total Paragraphs:', value: parsedData.paragraphs.length },
-    { label: 'Total Lists:', value: parsedData.lists.length },
-  ];
-  
-  summaryData.forEach((item, index) => {
-    const row = index + 3;
-    const labelCell = summarySheet.getCell(row, 1);
-    labelCell.value = item.label;
-    labelCell.font = { bold: true, size: 12 };
-    labelCell.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFE7F3FF' }
-    };
-    
-    const valueCell = summarySheet.getCell(row, 2);
-    valueCell.value = item.value;
-    valueCell.font = { size: 12 };
-    valueCell.alignment = { horizontal: 'center' };
-  });
-  
-  summarySheet.columns[0].width = 25;
-  summarySheet.columns[1].width = 15;
+  // const summarySheet = workbook.addWorksheet('📋 Summary');
+  // summarySheet.getCell(1, 1).value = 'Extraction Summary';
+  // summarySheet.getCell(1, 1).font = { bold: true, size: 16, color: { argb: 'FF667EEA' } };
+  // summarySheet.getRow(1).height = 30;
+  // 
+  // const summaryData = [
+  //   { label: 'Total Headers:', value: parsedData.headers.length },
+  //   { label: 'Total Tables:', value: parsedData.tables.length },
+  //   { label: 'Total Paragraphs:', value: parsedData.paragraphs.length },
+  //   { label: 'Total Lists:', value: parsedData.lists.length },
+  // ];
+  // 
+  // summaryData.forEach((item, index) => {
+  //   const row = index + 3;
+  //   const labelCell = summarySheet.getCell(row, 1);
+  //   labelCell.value = item.label;
+  //   labelCell.font = { bold: true, size: 12 };
+  //   labelCell.fill = {
+  //     type: 'pattern',
+  //     pattern: 'solid',
+  //     fgColor: { argb: 'FFE7F3FF' }
+  //   };
+  //   
+  //   const valueCell = summarySheet.getCell(row, 2);
+  //   valueCell.value = item.value;
+  //   valueCell.font = { size: 12 };
+  //   valueCell.alignment = { horizontal: 'center' };
+  // });
+  // 
+  // summarySheet.columns[0].width = 25;
+  // summarySheet.columns[1].width = 15;
 
   await workbook.xlsx.writeFile(outputPath);
 }
