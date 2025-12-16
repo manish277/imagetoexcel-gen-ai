@@ -86,4 +86,30 @@ async function extractData(req, res) {
   }
 }
 
-module.exports = { uploadImage, extractData };
+async function generateExcelFromMarkdown(req, res) {
+  try {
+    const { markdown } = req.body;
+    
+    if (!markdown) {
+      return res.status(400).json({ error: 'Markdown text is required' });
+    }
+
+    const excelPath = path.join(__dirname, '../../outputs', `extracted-${Date.now()}.xlsx`);
+    await markdownToExcel(markdown, excelPath);
+
+    res.download(excelPath, 'extracted-data.xlsx', () => {
+      // Cleanup temp file
+      if (fs.existsSync(excelPath)) {
+        fs.unlinkSync(excelPath);
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ 
+      error: 'Excel generation failed', 
+      details: err.message 
+    });
+  }
+}
+
+module.exports = { uploadImage, extractData, generateExcelFromMarkdown };

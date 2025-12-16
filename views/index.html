@@ -9,8 +9,8 @@
 <body>
   <div class="container">
     <header>
-      <h1>📄 Image to Excel OCR Service</h1>
-      <p class="subtitle">Extract text, tables, and data from images using AI-powered OCR</p>
+      <h1>📄 Image to Excel Converter</h1>
+      <p class="subtitle">AI-powered image extraction</p>
     </header>
 
     <main>
@@ -18,25 +18,21 @@
         <div class="upload-area" id="uploadArea">
           <input type="file" name="image" accept="image/*" required id="imageInput" />
           <div class="upload-content">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="17 8 12 3 7 8"></polyline>
               <line x1="12" y1="3" x2="12" y2="15"></line>
             </svg>
-            <p class="upload-text">Click to select or drag and drop an image</p>
-            <p class="upload-hint">Supports: PNG, JPG, JPEG, GIF, WebP</p>
+            <p class="upload-text">Drop image here or click to browse</p>
+            <p class="upload-hint">PNG, JPG, GIF, WebP</p>
           </div>
           <div id="fileName" class="file-name"></div>
         </div>
 
-        <div class="button-group">
-          <button type="button" onclick="extractData()" class="btn btn-primary" id="extractBtn">
-            <span class="btn-icon">🔍</span>
-            Extract Data (JSON)
-          </button>
+        <div class="button-group" id="actionButtons" style="display: none;">
           <button type="button" onclick="downloadExcel()" class="btn btn-success" id="excelBtn">
             <span class="btn-icon">📊</span>
-            Download as Excel
+            Download Excel
           </button>
         </div>
       </form>

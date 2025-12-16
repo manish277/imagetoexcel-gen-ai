@@ -103,17 +103,27 @@ async function markdownToExcel(markdownText, outputPath) {
     parsedData.tables.forEach((table, tableIndex) => {
       if (tableIndex > 0) rowIndex += 2;
       
+      // Get all columns dynamically using helper function
+      const allColumns = getAllTableColumns(table);
+      
+      // Skip if no columns found
+      if (allColumns.length === 0) {
+        return; // Skip this table
+      }
+      
       // Table label
       const tableLabelCell = structuredSheet.getCell(rowIndex, 1);
       tableLabelCell.value = `Table ${tableIndex + 1}`;
       tableLabelCell.font = { bold: true, size: 12 };
-      structuredSheet.mergeCells(rowIndex, 1, rowIndex, table.headers.length);
+      structuredSheet.mergeCells(rowIndex, 1, rowIndex, allColumns.length);
       rowIndex++;
       
       // Table headers
-      table.headers.forEach((header, colIndex) => {
+      allColumns.forEach((header, colIndex) => {
         const cell = structuredSheet.getCell(rowIndex, colIndex + 1);
-        cell.value = header;
+        // Clean markdown from headers too
+        let cleanHeader = typeof header === 'string' ? header.replace(/\*\*/g, '').replace(/__/g, '').replace(/\*/g, '').replace(/_/g, '').trim() : header;
+        cell.value = cleanHeader;
         cell.font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' } };
         cell.fill = {
           type: 'pattern',
@@ -131,18 +141,38 @@ async function markdownToExcel(markdownText, outputPath) {
       rowIndex++;
 
       // Table data rows with alternating colors
-      table.rows.forEach((row, rowIdx) => {
-        table.headers.forEach((header, colIndex) => {
-          const cellValue = row[header] || '';
+      if (table.rows && Array.isArray(table.rows)) {
+        table.rows.forEach((row, rowIdx) => {
+          allColumns.forEach((header, colIndex) => {
+          let cellValue = row[header] || '';
+          // Clean markdown formatting (remove **, __, etc.)
+          if (typeof cellValue === 'string') {
+            cellValue = cellValue.replace(/\*\*/g, '').replace(/__/g, '').replace(/\*/g, '').replace(/_/g, '').trim();
+          }
           const cell = structuredSheet.getCell(rowIndex, colIndex + 1);
-          cell.value = cellValue;
+          
+          // Try to detect numbers (only if it's a clean number string)
+          if (cellValue && typeof cellValue === 'string' && cellValue !== '' && /^-?\d+\.?\d*$/.test(cellValue.trim())) {
+            const numValue = parseFloat(cellValue);
+            if (!isNaN(numValue)) {
+              cell.value = numValue;
+              cell.numFmt = '#,##0.00';
+              cell.alignment = { vertical: 'middle', horizontal: 'right', wrapText: true };
+            } else {
+              cell.value = cellValue;
+              cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+            }
+          } else {
+            cell.value = cellValue;
+            cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+          }
+          
           cell.border = {
             top: { style: 'thin', color: { argb: 'FF000000' } },
             left: { style: 'thin', color: { argb: 'FF000000' } },
             bottom: { style: 'thin', color: { argb: 'FF000000' } },
             right: { style: 'thin', color: { argb: 'FF000000' } }
           };
-          cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
           
           // Alternating row colors
           if (rowIdx % 2 === 0) {
@@ -158,16 +188,10 @@ async function markdownToExcel(markdownText, outputPath) {
               fgColor: { argb: 'FFF8F9FA' }
             };
           }
-          
-          // Try to detect numbers
-          if (cellValue && !isNaN(cellValue) && cellValue !== '') {
-            cell.value = parseFloat(cellValue);
-            cell.numFmt = '#,##0.00';
-            cell.alignment = { vertical: 'middle', horizontal: 'right', wrapText: true };
-          }
+          });
+          rowIndex++;
         });
-        rowIndex++;
-      });
+      }
     });
     rowIndex += 2;
   }
@@ -237,16 +261,65 @@ async function markdownToExcel(markdownText, outputPath) {
     column.width = Math.min(Math.max(maxLength + 2, 15), 60);
   });
   
+  // Helper function to get all columns from a table dynamically - preserves header order
+  function getAllTableColumns(table) {
+    if (!table || typeof table !== 'object') {
+      return [];
+    }
+    
+    // Start with headers in their original order
+    const orderedColumns = [];
+    const seenColumns = new Set();
+    
+    // First, add headers in their original order (this is critical!)
+    if (table.headers && Array.isArray(table.headers)) {
+      table.headers.forEach(h => {
+        const header = h?.toString().trim();
+        if (header && !seenColumns.has(header)) {
+          orderedColumns.push(header);
+          seenColumns.add(header);
+        }
+      });
+    }
+    
+    // Then add any additional columns found in rows (but preserve header order first)
+    if (table.rows && Array.isArray(table.rows)) {
+      table.rows.forEach(row => {
+        if (row && typeof row === 'object') {
+          Object.keys(row).forEach(key => {
+            const trimmedKey = key?.toString().trim();
+            if (trimmedKey && !seenColumns.has(trimmedKey)) {
+              orderedColumns.push(trimmedKey);
+              seenColumns.add(trimmedKey);
+            }
+          });
+        }
+      });
+    }
+    
+    return orderedColumns;
+  }
+
   // Separate sheets for each table (if multiple tables)
   parsedData.tables.forEach((table, index) => {
     if (parsedData.tables.length > 1) {
       const tableSheet = workbook.addWorksheet(`Table ${index + 1}`);
       let tableRowIndex = 1;
       
+      // Get all columns dynamically
+      const allColumns = getAllTableColumns(table);
+      
+      // Use allColumns for rendering (includes all columns found in data)
+      if (allColumns.length === 0) {
+        return; // Skip empty tables
+      }
+      
       // Table headers
-      table.headers.forEach((header, colIndex) => {
+      allColumns.forEach((header, colIndex) => {
         const cell = tableSheet.getCell(tableRowIndex, colIndex + 1);
-        cell.value = header;
+        // Clean markdown from headers too
+        let cleanHeader = typeof header === 'string' ? header.replace(/\*\*/g, '').replace(/__/g, '').replace(/\*/g, '').replace(/_/g, '').trim() : header;
+        cell.value = cleanHeader || `Column ${colIndex + 1}`;
         cell.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
         cell.fill = {
           type: 'pattern',
@@ -264,18 +337,38 @@ async function markdownToExcel(markdownText, outputPath) {
       tableRowIndex++;
 
       // Table data rows
-      table.rows.forEach((row, rowIdx) => {
-        table.headers.forEach((header, colIndex) => {
-          const cellValue = row[header] || '';
+      if (table.rows && Array.isArray(table.rows)) {
+        table.rows.forEach((row, rowIdx) => {
+          allColumns.forEach((header, colIndex) => {
+          let cellValue = row[header] || '';
+          // Clean markdown formatting (remove **, __, etc.)
+          if (typeof cellValue === 'string') {
+            cellValue = cellValue.replace(/\*\*/g, '').replace(/__/g, '').replace(/\*/g, '').replace(/_/g, '').trim();
+          }
           const cell = tableSheet.getCell(tableRowIndex, colIndex + 1);
-          cell.value = cellValue;
+          
+          // Try to detect numbers (only if it's a clean number string)
+          if (cellValue && typeof cellValue === 'string' && cellValue !== '' && /^-?\d+\.?\d*$/.test(cellValue.trim())) {
+            const numValue = parseFloat(cellValue);
+            if (!isNaN(numValue)) {
+              cell.value = numValue;
+              cell.numFmt = '#,##0.00';
+              cell.alignment = { vertical: 'middle', horizontal: 'right', wrapText: true };
+            } else {
+              cell.value = cellValue;
+              cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+            }
+          } else {
+            cell.value = cellValue;
+            cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+          }
+          
           cell.border = {
             top: { style: 'thin', color: { argb: 'FF000000' } },
             left: { style: 'thin', color: { argb: 'FF000000' } },
             bottom: { style: 'thin', color: { argb: 'FF000000' } },
             right: { style: 'thin', color: { argb: 'FF000000' } }
           };
-          cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
           
           // Alternating row colors
           if (rowIdx % 2 === 0) {
@@ -291,16 +384,10 @@ async function markdownToExcel(markdownText, outputPath) {
               fgColor: { argb: 'FFF8F9FA' }
             };
           }
-          
-          // Try to detect numbers
-          if (cellValue && !isNaN(cellValue) && cellValue !== '') {
-            cell.value = parseFloat(cellValue);
-            cell.numFmt = '#,##0.00';
-            cell.alignment = { vertical: 'middle', horizontal: 'right', wrapText: true };
-          }
+          });
+          tableRowIndex++;
         });
-        tableRowIndex++;
-      });
+      }
       
       // Auto-size columns
       tableSheet.columns.forEach((column) => {

@@ -1,13 +1,21 @@
 let currentData = null;
+let currentFile = null;
+let isExtracting = false;
 
-// File input change handler
+// File input change handler - auto-extract on file selection
 document.getElementById('imageInput').addEventListener('change', function(e) {
   const fileName = document.getElementById('fileName');
   if (e.target.files[0]) {
-    fileName.textContent = `Selected: ${e.target.files[0].name}`;
+    currentFile = e.target.files[0];
+    fileName.textContent = `Selected: ${currentFile.name}`;
     fileName.classList.add('show');
+    // Auto-extract when file is selected
+    autoExtract();
   } else {
     fileName.classList.remove('show');
+    currentFile = null;
+    currentData = null;
+    hideResult();
   }
 });
 
@@ -34,27 +42,28 @@ uploadArea.addEventListener('drop', (e) => {
   const files = e.dataTransfer.files;
   if (files.length > 0 && files[0].type.startsWith('image/')) {
     fileInput.files = files;
+    currentFile = files[0];
     const fileName = document.getElementById('fileName');
-    fileName.textContent = `Selected: ${files[0].name}`;
+    fileName.textContent = `Selected: ${currentFile.name}`;
     fileName.classList.add('show');
+    // Auto-extract when file is dropped
+    autoExtract();
   } else {
     showError('Please drop an image file');
   }
 });
 
-async function extractData() {
-  const fileInput = document.getElementById('imageInput');
-  if (!fileInput.files[0]) {
-    showError('Please select an image file');
-    return;
-  }
-
+// Auto-extract function - called when file is selected
+async function autoExtract() {
+  if (!currentFile || isExtracting) return;
+  
   const formData = new FormData();
-  formData.append('image', fileInput.files[0]);
+  formData.append('image', currentFile);
 
   setLoading(true);
   hideResult();
   clearError();
+  isExtracting = true;
 
   try {
     const response = await fetch('/api/extract', {
@@ -64,60 +73,87 @@ async function extractData() {
 
     const data = await response.json();
     setLoading(false);
+    isExtracting = false;
 
     if (data.success) {
       currentData = data;
       displayResult(data);
-      showSuccess('Data extracted successfully!');
+      // Show action buttons after successful extraction
+      const actionButtons = document.getElementById('actionButtons');
+      if (actionButtons) {
+        actionButtons.style.display = 'flex';
+      }
+      showSuccess('Data extracted! You can now download as JSON or Excel.');
     } else {
       showError('Error: ' + (data.details || data.error));
     }
   } catch (error) {
     setLoading(false);
+    isExtracting = false;
     showError('Error: ' + error.message);
   }
 }
 
+// extractData function removed - data is displayed automatically after extraction
+
 async function downloadExcel() {
-  const fileInput = document.getElementById('imageInput');
-  if (!fileInput.files[0]) {
-    showError('Please select an image file');
+  // If we have extracted data, use it to generate Excel without calling LLM again
+  if (currentData && currentData.rawText) {
+    try {
+      setLoading(true);
+      clearError();
+      
+      // Send only the markdown text to generate Excel (no image needed)
+      const response = await fetch('/api/generate-excel', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          markdown: currentData.rawText
+        })
+      });
+
+      setLoading(false);
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${getBaseFileName()}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        showSuccess('Excel file downloaded successfully!');
+      } else {
+        const error = await response.json();
+        showError('Error: ' + (error.details || error.error));
+      }
+    } catch (error) {
+      setLoading(false);
+      showError('Error: ' + error.message);
+    }
     return;
   }
 
-  const formData = new FormData();
-  formData.append('image', fileInput.files[0]);
-
-  setLoading(true);
-  clearError();
-
-  try {
-    const response = await fetch('/api/upload', {
-      method: 'POST',
-      body: formData
-    });
-
-    setLoading(false);
-
-    if (response.ok) {
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'extracted-data.xlsx';
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      showSuccess('Excel file downloaded successfully!');
-    } else {
-      const error = await response.json();
-      showError('Error: ' + (error.details || error.error));
-    }
-  } catch (error) {
-    setLoading(false);
-    showError('Error: ' + error.message);
+  // Fallback: if no cached data, extract first
+  if (!currentData && currentFile) {
+    await autoExtract();
+    // Retry after extraction
+    setTimeout(() => downloadExcel(), 500);
+    return;
   }
+
+  showError('Please select an image file first');
+}
+
+function getBaseFileName() {
+  if (currentFile && currentFile.name) {
+    return currentFile.name.replace(/\.[^/.]+$/, '') || 'extracted-data';
+  }
+  return 'extracted-data';
 }
 
 function downloadJSON() {
@@ -132,7 +168,7 @@ function downloadJSON() {
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'extracted-data.json';
+  a.download = `${getBaseFileName()}.json`;
   document.body.appendChild(a);
   a.click();
   window.URL.revokeObjectURL(url);
@@ -158,6 +194,14 @@ function clearResult() {
   hideResult();
   document.getElementById('extractedData').textContent = '';
   currentData = null;
+  currentFile = null;
+  document.getElementById('imageInput').value = '';
+  document.getElementById('fileName').classList.remove('show');
+  // Hide action buttons when cleared
+  const actionButtons = document.getElementById('actionButtons');
+  if (actionButtons) {
+    actionButtons.style.display = 'none';
+  }
   clearError();
 }
 
@@ -246,17 +290,14 @@ function hideResult() {
 
 function setLoading(show) {
   const loading = document.getElementById('loading');
-  const extractBtn = document.getElementById('extractBtn');
   const excelBtn = document.getElementById('excelBtn');
   
   if (show) {
     loading.classList.add('show');
-    extractBtn.disabled = true;
-    excelBtn.disabled = true;
+    if (excelBtn) excelBtn.disabled = true;
   } else {
     loading.classList.remove('show');
-    extractBtn.disabled = false;
-    excelBtn.disabled = false;
+    if (excelBtn) excelBtn.disabled = false;
   }
 }
 
