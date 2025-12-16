@@ -1,0 +1,58 @@
+# Dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Upload and output directories
+uploads/*
+outputs/*
+!uploads/.gitkeep
+!outputs/.gitkeep
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+*.md
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Testing
+coverage
+.nyc_output
+*.test.js
+*.spec.js
+
+# Logs
+logs
+*.log
+
+# Temporary files
+tmp
+temp
+*.tmp
+
+# Build outputs
+dist
+build
+

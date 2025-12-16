@@ -3,9 +3,12 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-  "start": "node src/server.js",
-  "dev": "nodemon src/server.js"
-},
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "prod": "NODE_ENV=production node src/server.js",
+    "docker:build": "docker build -t image-to-excel .",
+    "docker:run": "docker run -p 3000:3000 --env-file .env image-to-excel"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
