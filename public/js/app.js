@@ -1,12 +1,67 @@
 let currentData = null;
 let currentFile = null;
 let isExtracting = false;
+let progressTimer = null;
+
+function setProgress(show, label) {
+  const container = document.getElementById('progressBar');
+  const labelEl = document.getElementById('progressLabel');
+  if (!container || !labelEl) return;
+
+  // Show or hide the progress bar
+  if (show) {
+    container.classList.add('show');
+  } else {
+    container.classList.remove('show');
+  }
+
+  if (label) {
+    labelEl.textContent = label;
+  }
+}
+
+function startProgressSequence() {
+  const steps = [
+    'Uploading file…',
+    'Reading file details…',
+    'Sending to AI for extraction…',
+    'Extracting text from image…',
+    'Structuring data for Excel…'
+  ];
+  let index = 0;
+
+  // Immediately show first step
+  setProgress(true, steps[index]);
+
+  // Clear any previous timer
+  if (progressTimer) {
+    clearInterval(progressTimer);
+  }
+
+  progressTimer = setInterval(() => {
+    if (!isExtracting) {
+      stopProgressSequence();
+      return;
+    }
+    index = (index + 1) % steps.length;
+    setProgress(true, steps[index]);
+  }, 6000);
+}
+
+function stopProgressSequence() {
+  if (progressTimer) {
+    clearInterval(progressTimer);
+    progressTimer = null;
+  }
+  setProgress(false, '');
+}
 
 // File input change handler - auto-extract on file selection
 document.getElementById('imageInput').addEventListener('change', function(e) {
   const fileName = document.getElementById('fileName');
   if (e.target.files[0]) {
     currentFile = e.target.files[0];
+    setProgress(true, 'Upload complete. Starting extraction…');
     fileName.textContent = `Selected: ${currentFile.name}`;
     fileName.classList.add('show');
     // Auto-extract when file is selected
@@ -46,6 +101,7 @@ uploadArea.addEventListener('drop', (e) => {
     const fileName = document.getElementById('fileName');
     fileName.textContent = `Selected: ${currentFile.name}`;
     fileName.classList.add('show');
+    setProgress(true, 'Upload complete. Starting extraction…');
     // Auto-extract when file is dropped
     autoExtract();
   } else {
@@ -64,6 +120,7 @@ async function autoExtract() {
   hideResult();
   clearError();
   isExtracting = true;
+  startProgressSequence();
 
   try {
     const response = await fetch('/api/extract', {
@@ -74,6 +131,7 @@ async function autoExtract() {
     const data = await response.json();
     setLoading(false);
     isExtracting = false;
+    stopProgressSequence();
 
     if (data.success) {
       currentData = data;
@@ -90,6 +148,7 @@ async function autoExtract() {
   } catch (error) {
     setLoading(false);
     isExtracting = false;
+    stopProgressSequence();
     showError('Error: ' + error.message);
   }
 }
@@ -202,6 +261,7 @@ function clearResult() {
   if (actionButtons) {
     actionButtons.style.display = 'none';
   }
+  stopProgressSequence();
   clearError();
 }
 
@@ -289,14 +349,12 @@ function hideResult() {
 }
 
 function setLoading(show) {
-  const loading = document.getElementById('loading');
+  // Loading element is hidden permanently - we use progress bar instead
   const excelBtn = document.getElementById('excelBtn');
   
   if (show) {
-    loading.classList.add('show');
     if (excelBtn) excelBtn.disabled = true;
   } else {
-    loading.classList.remove('show');
     if (excelBtn) excelBtn.disabled = false;
   }
 }
